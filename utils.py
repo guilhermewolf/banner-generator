@@ -2,28 +2,23 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import httpx
 import os
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
-# Asset paths from .env or defaults
-FONT_PATH = os.getenv("FONT_PATH", "assets/Inter-Bold.ttf")
-FOOTER_FONT_PATH = os.getenv("FOOTER_FONT_PATH", "assets/Inter-Regular.ttf")
+# Paths from .env or fallback
+FONT_PATH = os.getenv("FONT_PATH", "assets/Chivo-Bold.ttf")
+FOOTER_FONT_PATH = os.getenv("FOOTER_FONT_PATH", "assets/Chivo-Regular.ttf")
 QUOTE_ICON_PATH = os.getenv("QUOTE_ICON_PATH", "assets/quote.png")
 IG_ICON_PATH = os.getenv("IG_ICON_PATH", "assets/instagram.png")
 
-# Canvas constants
+# Canvas dimensions
 WIDTH, HEIGHT = 1080, 1080
-CARD_MARGIN = 60
-CARD_PADDING = 60
-QUOTE_ICON_SIZE = 60
-IG_ICON_SIZE = 28
-BOTTOM_BAR_HEIGHT = 40
 
 def download_image(url: str) -> Image.Image:
     response = httpx.get(url)
     response.raise_for_status()
-    return Image.open(BytesIO(response.content)).convert("RGB")
+    return Image.open(BytesIO(response.content)).convert("RGB").resize((WIDTH, HEIGHT))
 
 def wrap_text(text, font, max_width):
     words = text.split()
@@ -41,72 +36,44 @@ def wrap_text(text, font, max_width):
         lines.append(current_line)
     return lines
 
-def generate_banner(background: Image.Image, text: str, footer: str = "@TheSignalDaily") -> BytesIO:
-    bg = background.resize((WIDTH, HEIGHT))
-    banner = bg.copy()
+def generate_banner(background: Image.Image, text: str, footer: str = "@newsmedia") -> BytesIO:
+    banner = background.copy()
     draw = ImageDraw.Draw(banner)
 
-    # Fonts
-    title_font = ImageFont.truetype(FONT_PATH, 42)
-    footer_font = ImageFont.truetype(FOOTER_FONT_PATH, 26)
+    # Load assets
+    quote_icon = Image.open(QUOTE_ICON_PATH).convert("RGBA").resize((59, 51))
+    ig_icon = Image.open(IG_ICON_PATH).convert("RGBA").resize((26, 26))
 
-    # Icons
-    quote_icon = Image.open(QUOTE_ICON_PATH).convert("RGBA").resize((QUOTE_ICON_SIZE, QUOTE_ICON_SIZE))
-    ig_icon = Image.open(IG_ICON_PATH).convert("RGBA").resize((IG_ICON_SIZE, IG_ICON_SIZE))
+    # Load fonts
+    title_font = ImageFont.truetype(FONT_PATH, 50)
+    footer_font = ImageFont.truetype(FOOTER_FONT_PATH, 25)
 
-    # Text block
-    max_text_width = WIDTH - 2 * (CARD_MARGIN + CARD_PADDING)
+    # Draw white content box
+    draw.rectangle([(119, 442), (119 + 763, 442 + 437)], fill="white")
+
+    # Draw quote icon
+    banner.paste(quote_icon, (160, 485), quote_icon)
+
+    # Draw headline text
+    max_text_width = 659
     lines = wrap_text(text, title_font, max_text_width)
-    line_height = title_font.getbbox("A")[3] + 12
-    text_block_height = len(lines) * line_height
-
-    card_height = QUOTE_ICON_SIZE + 20 + text_block_height + CARD_PADDING * 2 + 20
-    card_top = HEIGHT - card_height - BOTTOM_BAR_HEIGHT - 40
-    card_bottom = card_top + card_height
-    card_left = CARD_MARGIN
-    card_right = WIDTH - CARD_MARGIN
-
-    # White card
-    draw.rectangle([(card_left, card_top), (card_right, card_bottom)], fill="white")
-
-    # Quote icon
-    banner.paste(
-        quote_icon,
-        (card_left + CARD_PADDING, card_top + CARD_PADDING),
-        quote_icon
-    )
-
-    # Text
-    text_x = card_left + CARD_PADDING
-    text_y = card_top + CARD_PADDING + QUOTE_ICON_SIZE + 20
+    line_height = int(title_font.getbbox("A")[3] * 1.2)
+    text_y = 556
     for line in lines:
-        draw.text((text_x, text_y), line, font=title_font, fill="black")
+        draw.text((161, text_y), line, font=title_font, fill="black")
         text_y += line_height
 
-    # Underline
-    underline_y = card_bottom - CARD_PADDING // 2
-    draw.line(
-        [(card_left + CARD_PADDING, underline_y),
-         (card_right - CARD_PADDING, underline_y)],
-        fill=(0, 123, 255),
-        width=4
-    )
+    #draw.rectangle([(bar_x, bar_y), (bar_x + bar_width, HEIGHT)], fill="#DE3F1C")
+    #draw.rectangle((0, 1016, 1080, 1080), fill="blue", outline="black")
+    draw.rectangle((0, 1016, 1080, 1080), fill="#4F86EC")
 
-    # Blue bottom bar
-    bar_top = HEIGHT - BOTTOM_BAR_HEIGHT
-    draw.rectangle([(0, bar_top), (WIDTH, HEIGHT)], fill=(181, 215, 243))
+    # Paste Instagram icon in red bar
+    banner.paste(ig_icon, (32, 1027), ig_icon)
 
-    # Footer text + icon in the blue bar
-    ig_y = bar_top + (BOTTOM_BAR_HEIGHT - IG_ICON_SIZE) // 2
-    banner.paste(ig_icon, (CARD_MARGIN, ig_y), ig_icon)
-    draw.text(
-        (CARD_MARGIN + IG_ICON_SIZE + 10, ig_y + 2),
-        footer,
-        font=footer_font,
-        fill="black"
-    )
+    # Draw footer text
+    draw.text((70, 1030), footer, font=footer_font, fill="white")
 
-    # Output
+    # Output image to memory
     output = BytesIO()
     banner.save(output, format="JPEG", quality=95)
     output.seek(0)
