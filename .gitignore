@@ -1,7 +1,33 @@
+# Environment and credentials
 service_account.json
 .env
-#assets/
-live.py
-test.py
-__pycache__
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Test outputs
+output*.png
+output*.jpg
+tests/output*.png
+tests/output*.jpg
+
+# Temporary files
+*.log
+*.tmp
+
+reference/
